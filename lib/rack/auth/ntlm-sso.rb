@@ -28,34 +28,33 @@ module Rack
       def call env
         auth = NTLMSSO::Request.new env
 
-        unless auth.provided?
-          log "ask for TYPE 1 message"
-          return unauthorized
-        end
-        
-        log "got: #{auth.params}"
-        message = auth.decode
-        @version = auth.version
+        if auth.provided?
+          log "got: #{auth.params}"
+          message = auth.decode
+          @version = auth.version
 
-        case message
-        when :negotiate
-          log "received negotiate message. Sending TYPE 2 message asking for TYPE 3 message"
-          return unauthorized challenge(:type2)
+          case message
+          when :negotiate
+            log "received negotiate message. Sending TYPE 2 message asking for TYPE 3 message"
+            return unauthorized challenge(:type2)
 
-        when :authenticate
-          if auth.user.nil? or auth.user.empty?
-            set_default_user env
+          when :authenticate
+            if auth.user.nil? or auth.user.empty?
+              set_default_user env
+            else
+              env['REMOTE_USER'] = auth.user
+              log "authenticated user: #{auth.user}"
+            end
+
           else
-            env['REMOTE_USER'] = auth.user
-            log "authenticated user: #{auth.user}"
+            log "ERROR: unknown client response"
+            set_default_user env
           end
-
+          return @app.call env
         else
-          log "ERROR: unknown client response"
-          set_default_user env
+          avoid_auth_prompt = [403, {"Content-Type"=>"text/plain", "Content-Length"=>"0"}, []]
+          return avoid_auth_prompt
         end
-
-        return @app.call env
       end
 
       private
