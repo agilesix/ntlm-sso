@@ -53,7 +53,7 @@ module Rack
           return @app.call env
         else
           # avoid_auth_prompt = [200, {"Content-Type"=>"text/plain", "Content-Length"=>"0"}, []]
-          return ok
+          return :ok
         end
       end
 
